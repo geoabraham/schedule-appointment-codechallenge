@@ -1,6 +1,7 @@
 VENV ?= venv
+REQUIREMENTS ?= requeriments-dev.txt
 
-init: clean init-venv init-precommit
+init: clean init-venv
 
 init-venv: clean-venv create-venv update-venv
 	@echo ""
@@ -18,16 +19,12 @@ update-venv:
 		pip install -r $(REQUIREMENTS) \
 	)
 
-init-precommit:
-	@echo "Installing pre commit..."
-	@( \
-		. $(VENV)/bin/activate; \
-		pre-commit install; \
-	)
-
 clean: clean-venv
 
 clean-venv:
 	@echo "Removing virtual environment: $(VENV)..."
 	@rm -rf $(VENV)
 
+service-run:
+	@echo "Starting server..."
+	@uvicorn app.main:app --reload

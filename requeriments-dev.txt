@@ -1,2 +1,1 @@
 -r requeriments.txt
-pre-commit==2.15.0
