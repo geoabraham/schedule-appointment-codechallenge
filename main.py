@@ -1,16 +1,35 @@
-# This is a sample Python script.
+from datetime import datetime
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+from fastapi import FastAPI
+from pydantic import BaseModel
 
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+app = FastAPI()
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+class Appointment(BaseModel):
+    appointment_date: datetime
+    user_id: int
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+appointments = [{"appointment_date": datetime.now(), "user_id": 0}]
+
+
+@app.get('/')
+async def root():
+    return {'message': 'Hello World!!'}
+
+
+@app.get('/appointment/')
+async def get_all_appointments():
+    return {"data": appointments}
+
+
+@app.get('/appointment/{user_id}')
+async def get_appointment_by_user_id(user_id: int):
+    return {"data": None}
+
+
+@app.post('/appointment')
+async def create_appointment(payload: Appointment):
+    appointments.append(payload.dict())
+    return {"data": payload}
