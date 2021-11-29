@@ -19,17 +19,18 @@ async def root():
     return {'message': 'Hello World!!'}
 
 
-@app.get('/appointment/')
+@app.get('/appointments')
 async def get_all_appointments():
     return {"data": appointments}
 
 
-@app.get('/appointment/{user_id}')
+@app.get('/appointments/{user_id}')
 async def get_appointment_by_user_id(user_id: int):
-    return {"data": None}
+    result = [a for a in appointments if a["user_id"] == user_id]
+    return {"data": result}
 
 
-@app.post('/appointment')
+@app.post('/appointments')
 async def create_appointment(payload: Appointment):
     appointments.append(payload.dict())
     return {"data": payload}
