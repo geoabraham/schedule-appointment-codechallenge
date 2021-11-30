@@ -1,5 +1,5 @@
 VENV ?= venv
-REQUIREMENTS ?= requeriments-dev.txt
+REQUERIMENTS ?= requeriments-dev.txt
 
 init: clean init-venv
 
@@ -16,7 +16,7 @@ update-venv:
 	@( \
 		. $(VENV)/bin/activate; \
 		pip install --upgrade pip; \
-		pip install -r $(REQUIREMENTS) \
+		pip install -r $(REQUERIMENTS) \
 	)
 
 clean: clean-venv
