@@ -33,8 +33,8 @@ async def get_appointment_by_user_id(user_id: int, response: Response):
     return {"data": result}
 
 
-@app.post('/appointments')
-async def create_appointment(payload: Appointment, response: Response):
+@app.post('/appointments', status_code=status.HTTP_201_CREATED)
+async def create_appointment(payload: Appointment):
     try:
         datetime.strptime(str(payload.appointment_date), "%Y-%m-%d %H:%M:%S")
     except ValueError as ve:
@@ -50,7 +50,6 @@ async def create_appointment(payload: Appointment, response: Response):
                             "A user can only have 1 appointment on a calendar date.")
 
     appointments.append(payload.dict())
-    response.status_code = status.HTTP_201_CREATED
     return {"data": payload}
 
 
