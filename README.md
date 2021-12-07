@@ -20,11 +20,13 @@ To run the FastAPI application in debug use:
 
     http://127.0.0.1:8000/docs
 
+## ReDoc
+
+    http://127.0.0.1:8000/redoc
+
 ## Server Model
 
-```json
-{
-    "appointment_date": "datetime",
-    "user_id": "int"
-}
-```
+    {
+        "appointment_date": "datetime",
+        "user_id": "int"
+    }
