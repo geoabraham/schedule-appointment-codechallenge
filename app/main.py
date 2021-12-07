@@ -97,6 +97,7 @@ async def create_appointment(payload: Appointment):
     )
 
     new_appointment = cursor.fetchone()
+    conn.commit()
 
     return {"data": new_appointment}
 
