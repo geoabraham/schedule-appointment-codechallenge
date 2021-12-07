@@ -38,15 +38,15 @@ async def create_appointment(payload: Appointment):
     try:
         datetime.strptime(str(payload.appointment_date), "%Y-%m-%d %H:%M:%S")
     except ValueError as ve:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             "Appointment datetime must be in 'YYYY-MM-DD HH:MM' format.")
 
     if payload.appointment_date.minute % 30 != 0 or payload.appointment_date.second != 0:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             "All appointments must start and end on the hour or half hour.")
 
     if not is_valid_appointment_date(payload.appointment_date, payload.user_id):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             "A user can only have 1 appointment on a calendar date.")
 
     appointments.append(payload.dict())
