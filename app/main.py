@@ -88,8 +88,17 @@ async def create_appointment(payload: Appointment):
             "A user can only have 1 appointment on a calendar date.",
         )
 
-    appointments.append(payload.dict())
-    return {"data": payload}
+    cursor.execute(
+        """INSERT INTO public.appointment(
+               appointment_date, user_id)
+               VALUES (%s, %s)
+           RETURNING *;""",
+        (payload.appointment_date, payload.user_id),
+    )
+
+    new_appointment = cursor.fetchone()
+
+    return {"data": new_appointment}
 
 
 def find_user_appointments(user_id):
