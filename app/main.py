@@ -48,19 +48,19 @@ async def get_all_appointments():
         """SELECT appointment_date, user_id 
 	         FROM public.appointment;"""
     )
-    appointments = cursor.fetchall()
-    return {"data": appointments}
+    all_appointments = cursor.fetchall()
+    return {"data": all_appointments}
 
 
 @app.get("/appointments/{user_id}")
 async def get_appointment_by_user_id(user_id: int, response: Response):
-    result = find_user_appointments(user_id)
-    if len(result) == 0:
+    user_appointments = find_user_appointments(user_id)
+    if len(user_appointments) == 0:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             f"Appointments for the user with id: {user_id} were not found",
         )
-    return {"data": result}
+    return {"data": user_appointments}
 
 
 @app.post("/appointments", status_code=status.HTTP_201_CREATED)
@@ -91,9 +91,10 @@ async def create_appointment(payload: Appointment):
     cursor.execute(
         """INSERT INTO public.appointment(
                appointment_date, user_id)
-               VALUES (%s, %s)
-           RETURNING *;""",
-        (payload.appointment_date, payload.user_id),
+               VALUES ('{0}', {1})
+           RETURNING *;""".format(
+            payload.appointment_date, payload.user_id
+        ),
     )
 
     new_appointment = cursor.fetchone()
@@ -102,15 +103,30 @@ async def create_appointment(payload: Appointment):
     return {"data": new_appointment}
 
 
-def find_user_appointments(user_id):
-    return [a for a in appointments if a["user_id"] == user_id]
+def find_user_appointments(user_id: int):
+    cursor.execute(
+        """SELECT appointment_date, user_id 
+	         FROM public.appointment
+            WHERE user_id = {0};""".format(
+            user_id
+        ),
+    )
+
+    user_appointments = cursor.fetchall()
+
+    return user_appointments
 
 
 def is_valid_appointment_date(appointment_date, user_id):
-    result = [
-        a
-        for a in appointments
-        if a["appointment_date"].date() == appointment_date.date()
-        and a["user_id"] == user_id
-    ]
-    return len(result) == 0
+    cursor.execute(
+        """SELECT appointment_date, user_id 
+	         FROM public.appointment
+            WHERE user_id = {0}
+              AND appointment_date = '{1}';""".format(
+            user_id, appointment_date
+        ),
+    )
+
+    user_appointments = cursor.fetchall()
+        
+    return len(user_appointments) == 0
