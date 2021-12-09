@@ -65,28 +65,7 @@ async def get_appointment_by_user_id(user_id: int, response: Response):
 
 @app.post("/appointments", status_code=status.HTTP_201_CREATED)
 async def create_appointment(payload: Appointment):
-    try:
-        datetime.strptime(str(payload.appointment_date), "%Y-%m-%d %H:%M:%S")
-    except ValueError as ve:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Appointment datetime must be in 'YYYY-MM-DD HH:MM' format.",
-        )
-
-    if (
-        payload.appointment_date.minute % 30 != 0
-        or payload.appointment_date.second != 0
-    ):
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "All appointments must start and end on the hour or half hour.",
-        )
-
-    if not is_valid_appointment_date(payload.appointment_date, payload.user_id):
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "A user can only have 1 appointment on a calendar date.",
-        )
+    validate_appointment(payload)
 
     cursor.execute(
         """INSERT INTO public.appointment(
@@ -117,7 +96,42 @@ def find_user_appointments(user_id: int):
     return user_appointments
 
 
-def is_valid_appointment_date(appointment_date, user_id):
+def validate_appointment(appt: Appointment):
+
+    if not is_valid_appointment_datetime_format(appt.appointment_date):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Appointment datetime must be in 'YYYY-MM-DD HH:MM' format.",
+        )
+        
+    if not is_valid_future_datetime(appt.appointment_date):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "All appointments must start on a future date.",
+        )
+
+    if not is_valid_appointment_start_time(appt.appointment_date):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "All appointments must start and end on the hour or half hour.",
+        )
+
+    if not is_valid_appointment_date_for_user(appt.appointment_date, appt.user_id):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "A user can only have 1 appointment on a calendar date.",
+        )
+
+
+def is_valid_appointment_datetime_format(appt_date):
+    try:
+        datetime.strptime(str(appt_date), "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return False
+    return True
+
+
+def is_valid_appointment_date_for_user(appointment_date, user_id):
     cursor.execute(
         """SELECT appointment_date, user_id 
 	         FROM public.appointment
@@ -128,5 +142,16 @@ def is_valid_appointment_date(appointment_date, user_id):
     )
 
     user_appointments = cursor.fetchall()
-        
     return len(user_appointments) == 0
+
+
+def is_valid_appointment_start_time(appt_date):
+    if appt_date.minute % 30 != 0:
+        return False
+    return True
+
+
+def is_valid_future_datetime(appt_date):
+    if appt_date < datetime.now():
+        return False
+    return True
