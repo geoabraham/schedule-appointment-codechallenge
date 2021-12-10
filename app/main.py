@@ -1,13 +1,17 @@
 import time
 from datetime import datetime
 
-from fastapi import FastAPI, Response, status, HTTPException
-from pydantic import BaseModel
-from pydantic.utils import import_string
-
 import psycopg2
+from fastapi import FastAPI, HTTPException, status
+from fastapi.params import Depends
 from psycopg2.extras import RealDictCursor
+from pydantic import BaseModel
+from sqlalchemy.orm.session import Session
 
+from . import models
+from .database import engine, get_db
+
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -34,8 +38,6 @@ while True:
         print("Reconnecting in 30 seconds...")
         time.sleep(30)
 
-appointments = [{"appointment_date": datetime.now(), "user_id": 0}]
-
 
 @app.get("/")
 async def root():
@@ -43,19 +45,15 @@ async def root():
 
 
 @app.get("/appointments")
-async def get_all_appointments():
-    cursor.execute(
-        """SELECT appointment_date, user_id 
-	         FROM public.appointment;"""
-    )
-    all_appointments = cursor.fetchall()
+async def get_all_appointments(db: Session = Depends(get_db)):
+    all_appointments = db.query(models.Appointment).all()
     return {"data": all_appointments}
 
 
 @app.get("/appointments/{user_id}")
-async def get_appointment_by_user_id(user_id: int, response: Response):
-    user_appointments = find_user_appointments(user_id)
-    if len(user_appointments) == 0:
+async def get_appointment_by_user_id(user_id: int, db: Session = Depends(get_db)):
+    user_appointments = find_user_appointments(user_id, db)
+    if not user_appointments:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             f"Appointments for the user with id: {user_id} were not found",
@@ -64,46 +62,33 @@ async def get_appointment_by_user_id(user_id: int, response: Response):
 
 
 @app.post("/appointments", status_code=status.HTTP_201_CREATED)
-async def create_appointment(payload: Appointment):
-    validate_appointment(payload)
+async def create_appointment(payload: Appointment, db: Session = Depends(get_db)):
 
-    cursor.execute(
-        """INSERT INTO public.appointment(
-               appointment_date, user_id)
-               VALUES ('{0}', {1})
-           RETURNING *;""".format(
-            payload.appointment_date, payload.user_id
-        ),
-    )
+    validate_appointment(payload, db)
 
-    new_appointment = cursor.fetchone()
-    conn.commit()
+    new_appointment = models.Appointment(**payload.dict())
+    db.add(new_appointment)
+    db.commit()
+    db.refresh(new_appointment)
 
     return {"data": new_appointment}
 
 
-def find_user_appointments(user_id: int):
-    cursor.execute(
-        """SELECT appointment_date, user_id 
-	         FROM public.appointment
-            WHERE user_id = {0};""".format(
-            user_id
-        ),
+def find_user_appointments(user_id: int, db: Session):
+    user_appointments = (
+        db.query(models.Appointment).filter(models.Appointment.user_id == user_id).all()
     )
-
-    user_appointments = cursor.fetchall()
-
     return user_appointments
 
 
-def validate_appointment(appt: Appointment):
+def validate_appointment(appt: Appointment, db: Session):
 
     if not is_valid_appointment_datetime_format(appt.appointment_date):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Appointment datetime must be in 'YYYY-MM-DD HH:MM' format.",
         )
-        
+
     if not is_valid_future_datetime(appt.appointment_date):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -116,7 +101,7 @@ def validate_appointment(appt: Appointment):
             "All appointments must start and end on the hour or half hour.",
         )
 
-    if not is_valid_appointment_date_for_user(appt.appointment_date, appt.user_id):
+    if not is_valid_appointment_date_for_user(appt.appointment_date, appt.user_id, db):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "A user can only have 1 appointment on a calendar date.",
@@ -131,18 +116,17 @@ def is_valid_appointment_datetime_format(appt_date):
     return True
 
 
-def is_valid_appointment_date_for_user(appointment_date, user_id):
-    cursor.execute(
-        """SELECT appointment_date, user_id 
-	         FROM public.appointment
-            WHERE user_id = {0}
-              AND appointment_date = '{1}';""".format(
-            user_id, appointment_date
-        ),
+def is_valid_appointment_date_for_user(appointment_date, user_id, db: Session):
+    user_appointments = (
+        db.query(models.Appointment)
+        .filter(
+            models.Appointment.appointment_date == appointment_date
+            and models.Appointment.user_id == user_id
+        )
+        .first()
     )
 
-    user_appointments = cursor.fetchall()
-    return len(user_appointments) == 0
+    return user_appointments is None
 
 
 def is_valid_appointment_start_time(appt_date):
