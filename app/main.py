@@ -77,18 +77,38 @@ async def create_appointment(payload: Appointment, db: Session = Depends(get_db)
 
 @app.delete("/appointments/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_appointment(id: UUID4, db: Session = Depends(get_db)):
-    appt = db.query(models.Appointment).filter(models.Appointment.appointment_id == id)
+    appt_query = db.query(models.Appointment).filter(
+        models.Appointment.appointment_id == id
+    )
 
-    if not appt.first():
+    if not appt_query.first():
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             f"Appointment with id: {id} does not exist",
         )
 
-    appt.delete(synchronize_session=False)
+    appt_query.delete(synchronize_session=False)
     db.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.put("/appointments/{id}")
+async def update_appointment(id: UUID4, payload: Appointment, db: Session = Depends(get_db)):
+    appt_query = db.query(models.Appointment).filter(
+        models.Appointment.appointment_id == id
+    )
+
+    if not appt_query.first():
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"Appointment with id: {id} does not exist",
+        )
+
+    appt_query.update(payload.dict(), synchronize_session=False)
+    db.commit()
+
+    return {"data": appt_query.first()}
 
 
 def find_user_appointments(user_id: int, db: Session):
