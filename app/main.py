@@ -2,10 +2,11 @@ import time
 from datetime import datetime
 
 import psycopg2
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.params import Depends
 from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel
+from pydantic.types import UUID4
 from sqlalchemy.orm.session import Session
 
 from . import models
@@ -74,6 +75,22 @@ async def create_appointment(payload: Appointment, db: Session = Depends(get_db)
     return {"data": new_appointment}
 
 
+@app.delete("/appointments/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_appointment(id: UUID4, db: Session = Depends(get_db)):
+    appt = db.query(models.Appointment).filter(models.Appointment.appointment_id == id)
+
+    if not appt.first():
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"Appointment with id: {id} does not exist",
+        )
+
+    appt.delete(synchronize_session=False)
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 def find_user_appointments(user_id: int, db: Session):
     user_appointments = (
         db.query(models.Appointment).filter(models.Appointment.user_id == user_id).all()
@@ -120,8 +137,8 @@ def is_valid_appointment_date_for_user(appointment_date, user_id, db: Session):
     user_appointments = (
         db.query(models.Appointment)
         .filter(
-            models.Appointment.appointment_date == appointment_date
-            and models.Appointment.user_id == user_id
+            models.Appointment.appointment_date == appointment_date,
+            models.Appointment.user_id == user_id,
         )
         .first()
     )
