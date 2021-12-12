@@ -7,8 +7,9 @@ from fastapi.params import Depends
 from psycopg2.extras import RealDictCursor
 from pydantic.types import UUID4
 from sqlalchemy.orm.session import Session
+from sqlalchemy.exc import IntegrityError
 
-from . import models, schemas, schemas_validators
+from . import hashing, models, schemas, schemas_validators
 from .database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
@@ -52,10 +53,17 @@ async def get_appointment_by_id(id: UUID4, db: Session = Depends(get_db)):
         .filter(models.Appointment.appointment_id == id)
         .first()
     )
+
+    if not appt:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"Appointment with id: {id} does not exist",
+        )
+
     return appt
 
 
-@app.get("/appointments/{user_id}", response_model=List[schemas.Appointment])
+@app.get("/appointments/users/{user_id}", response_model=List[schemas.Appointment])
 async def get_appointments_by_user_id(user_id: int, db: Session = Depends(get_db)):
     user_appointments = find_user_appointments(user_id, db)
     if not user_appointments:
@@ -72,7 +80,7 @@ async def get_appointments_by_user_id(user_id: int, db: Session = Depends(get_db
     status_code=status.HTTP_201_CREATED,
 )
 async def create_appointment(
-    payload: schemas.CreateAppointment, db: Session = Depends(get_db)
+    payload: schemas.AppointmentCreate, db: Session = Depends(get_db)
 ):
     schemas_validators.validate_appointment(payload, db)
 
@@ -104,7 +112,7 @@ async def delete_appointment(id: UUID4, db: Session = Depends(get_db)):
 
 @app.put("/appointments/{id}", response_model=schemas.Appointment)
 async def update_appointment(
-    id: UUID4, payload: schemas.UpdateAppointment, db: Session = Depends(get_db)
+    id: UUID4, payload: schemas.AppointmentUpdate, db: Session = Depends(get_db)
 ):
     appt_query = db.query(models.Appointment).filter(
         models.Appointment.appointment_id == id
@@ -120,6 +128,48 @@ async def update_appointment(
     db.commit()
 
     return appt_query.first()
+
+
+@app.get("/users", response_model=List[schemas.User])
+async def get_all_users(db: Session = Depends(get_db)):
+    all_users = db.query(models.User).all()
+    return all_users
+
+
+@app.get("/users/{id}", response_model=schemas.User)
+async def get_appointment_by_id(id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.user_id == id).first()
+    if not user:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"User with id: {id} does not exist",
+        )
+    return user
+
+
+@app.post("/users", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
+async def create_user(payload: schemas.UserCreate, db: Session = Depends(get_db)):
+    hashed_passwd = hashing.hash_bcrypt(payload.user_passwd)
+    payload.user_passwd = hashed_passwd
+
+    new_user = models.User(**payload.dict())
+    db.add(new_user)
+
+    try:
+        db.commit()
+    except IntegrityError as ie:
+        db.rollback()
+        if "duplicate key" in str(ie):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                detail=f"Key (email)=({payload.email}) already exists",
+            )
+        else:
+            raise ie
+
+    db.refresh(new_user)
+
+    return new_user
 
 
 def find_user_appointments(user_id: int, db: Session):

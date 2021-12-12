@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql.expression import null, text
-from sqlalchemy.sql.sqltypes import TIMESTAMP, Integer
+from sqlalchemy.sql.sqltypes import TIMESTAMP, Integer, String
 
 from .database import Base
 
@@ -24,6 +24,23 @@ class Appointment(Base):
     )
 
     user_id = Column("user_id", Integer, nullable=False)
+
+    created_at = Column(
+        "created_at",
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    user_id = Column("user_id", Integer, nullable=False, primary_key=True)
+
+    email = Column("email", String, nullable=False, unique=True)
+
+    user_passwd = Column("user_passwd", String, nullable=False)
 
     created_at = Column(
         "created_at",

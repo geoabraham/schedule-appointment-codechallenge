@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic.types import UUID4
 
-from pydantic.main import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class BaseAppointment(BaseModel):
@@ -9,16 +9,29 @@ class BaseAppointment(BaseModel):
     user_id: int
 
 
-class CreateAppointment(BaseAppointment):
+class AppointmentCreate(BaseAppointment):
     pass
 
 
-class UpdateAppointment(BaseAppointment):
+class AppointmentUpdate(BaseAppointment):
     pass
 
 
 class Appointment(BaseAppointment):
     appointment_id: UUID4
+
+    class Config:
+        orm_mode = True
+
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    user_passwd: str
+
+
+class User(BaseModel):
+    user_id: int
+    email: EmailStr
 
     class Config:
         orm_mode = True
