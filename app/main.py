@@ -1,25 +1,20 @@
-import time
 from datetime import datetime
+from time import sleep
+from typing import List
 
 import psycopg2
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.params import Depends
 from psycopg2.extras import RealDictCursor
-from pydantic import BaseModel
 from pydantic.types import UUID4
 from sqlalchemy.orm.session import Session
 
-from . import models
+from . import models, schemas
 from .database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
-
-class Appointment(BaseModel):
-    appointment_date: datetime
-    user_id: int
 
 
 while True:
@@ -37,7 +32,7 @@ while True:
         print("Database connection failed")
         print("error: ", error)
         print("Reconnecting in 30 seconds...")
-        time.sleep(30)
+        sleep(30)
 
 
 @app.get("/")
@@ -45,26 +40,41 @@ async def root():
     return {"message": "Hello World!!"}
 
 
-@app.get("/appointments")
+@app.get("/appointments", response_model=List[schemas.Appointment])
 async def get_all_appointments(db: Session = Depends(get_db)):
     all_appointments = db.query(models.Appointment).all()
-    return {"data": all_appointments}
+    return all_appointments
 
 
-@app.get("/appointments/{user_id}")
-async def get_appointment_by_user_id(user_id: int, db: Session = Depends(get_db)):
+@app.get("/appointments/{id}", response_model=schemas.Appointment)
+async def get_appointment_by_id(id: UUID4, db: Session = Depends(get_db)):
+    appt = (
+        db.query(models.Appointment)
+        .filter(models.Appointment.appointment_id == id)
+        .first()
+    )
+    return appt
+
+
+@app.get("/appointments/{user_id}", response_model=List[schemas.Appointment])
+async def get_appointments_by_user_id(user_id: int, db: Session = Depends(get_db)):
     user_appointments = find_user_appointments(user_id, db)
     if not user_appointments:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             f"Appointments for the user with id: {user_id} were not found",
         )
-    return {"data": user_appointments}
+    return user_appointments
 
 
-@app.post("/appointments", status_code=status.HTTP_201_CREATED)
-async def create_appointment(payload: Appointment, db: Session = Depends(get_db)):
-
+@app.post(
+    "/appointments",
+    response_model=schemas.Appointment,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_appointment(
+    payload: schemas.CreateAppointment, db: Session = Depends(get_db)
+):
     validate_appointment(payload, db)
 
     new_appointment = models.Appointment(**payload.dict())
@@ -72,7 +82,7 @@ async def create_appointment(payload: Appointment, db: Session = Depends(get_db)
     db.commit()
     db.refresh(new_appointment)
 
-    return {"data": new_appointment}
+    return new_appointment
 
 
 @app.delete("/appointments/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -93,8 +103,10 @@ async def delete_appointment(id: UUID4, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.put("/appointments/{id}")
-async def update_appointment(id: UUID4, payload: Appointment, db: Session = Depends(get_db)):
+@app.put("/appointments/{id}", response_model=schemas.Appointment)
+async def update_appointment(
+    id: UUID4, payload: schemas.UpdateAppointment, db: Session = Depends(get_db)
+):
     appt_query = db.query(models.Appointment).filter(
         models.Appointment.appointment_id == id
     )
@@ -108,7 +120,7 @@ async def update_appointment(id: UUID4, payload: Appointment, db: Session = Depe
     appt_query.update(payload.dict(), synchronize_session=False)
     db.commit()
 
-    return {"data": appt_query.first()}
+    return appt_query.first()
 
 
 def find_user_appointments(user_id: int, db: Session):
@@ -118,7 +130,7 @@ def find_user_appointments(user_id: int, db: Session):
     return user_appointments
 
 
-def validate_appointment(appt: Appointment, db: Session):
+def validate_appointment(appt: schemas.Appointment, db: Session):
 
     if not is_valid_appointment_datetime_format(appt.appointment_date):
         raise HTTPException(
