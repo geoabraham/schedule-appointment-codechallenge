@@ -114,6 +114,8 @@ async def delete_appointment(id: UUID4, db: Session = Depends(get_db)):
 async def update_appointment(
     id: UUID4, payload: schemas.AppointmentUpdate, db: Session = Depends(get_db)
 ):
+    schemas_validators.validate_appointment(payload, db)
+    
     appt_query = db.query(models.Appointment).filter(
         models.Appointment.appointment_id == id
     )
