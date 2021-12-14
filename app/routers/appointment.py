@@ -5,7 +5,7 @@ from fastapi.params import Depends
 from pydantic.types import UUID4
 from sqlalchemy.orm.session import Session
 
-from .. import models, schemas, schemas_validators
+from .. import models, schemas, schemas_validators, oauth2
 from ..database import get_db
 from .user import find_user_appointments
 
@@ -50,7 +50,9 @@ async def get_appointments_by_user_id(user_id: int, db: Session = Depends(get_db
     "/", response_model=schemas.Appointment, status_code=status.HTTP_201_CREATED
 )
 async def create_appointment(
-    payload: schemas.AppointmentCreate, db: Session = Depends(get_db)
+    payload: schemas.AppointmentCreate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(oauth2.get_current_user),
 ):
     schemas_validators.validate_appointment(payload, db)
 
@@ -63,7 +65,11 @@ async def create_appointment(
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_appointment(id: UUID4, db: Session = Depends(get_db)):
+async def delete_appointment(
+    id: UUID4,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(oauth2.get_current_user),
+):
     appt_query = db.query(models.Appointment).filter(
         models.Appointment.appointment_id == id
     )
@@ -82,7 +88,10 @@ async def delete_appointment(id: UUID4, db: Session = Depends(get_db)):
 
 @router.put("/{id}", response_model=schemas.Appointment)
 async def update_appointment(
-    id: UUID4, payload: schemas.AppointmentUpdate, db: Session = Depends(get_db)
+    id: UUID4,
+    payload: schemas.AppointmentUpdate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(oauth2.get_current_user),
 ):
     schemas_validators.validate_appointment(payload, db)
 

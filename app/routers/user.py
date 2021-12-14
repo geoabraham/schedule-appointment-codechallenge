@@ -6,6 +6,8 @@ from pydantic.types import UUID4
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.session import Session
 
+from app import oauth2
+
 from .. import hashing, models, schemas
 from ..database import get_db
 
@@ -30,7 +32,11 @@ async def get_appointment_by_id(id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
-async def create_user(payload: schemas.UserCreate, db: Session = Depends(get_db)):
+async def create_user(
+    payload: schemas.UserCreate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(oauth2.get_current_user),
+):
     hashed_passwd = hashing.hash_bcrypt(payload.user_passwd)
     payload.user_passwd = hashed_passwd
 
