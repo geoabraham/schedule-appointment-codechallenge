@@ -9,16 +9,16 @@ from sqlalchemy.orm.session import Session
 from .. import hashing, models, schemas
 from ..database import get_db
 
-router = APIRouter()
+router = APIRouter(prefix="/users")
 
 
-@router.get("/users", response_model=List[schemas.User])
+@router.get("/", response_model=List[schemas.User])
 async def get_all_users(db: Session = Depends(get_db)):
     all_users = db.query(models.User).all()
     return all_users
 
 
-@router.get("/users/{id}", response_model=schemas.User)
+@router.get("/{id}", response_model=schemas.User)
 async def get_appointment_by_id(id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.user_id == id).first()
     if not user:
@@ -29,7 +29,7 @@ async def get_appointment_by_id(id: int, db: Session = Depends(get_db)):
     return user
 
 
-@router.post("/users", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
 async def create_user(payload: schemas.UserCreate, db: Session = Depends(get_db)):
     hashed_passwd = hashing.hash_bcrypt(payload.user_passwd)
     payload.user_passwd = hashed_passwd

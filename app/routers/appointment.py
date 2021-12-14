@@ -9,16 +9,16 @@ from .. import models, schemas, schemas_validators
 from ..database import get_db
 from .user import find_user_appointments
 
-router = APIRouter()
+router = APIRouter(prefix="/appointments")
 
 
-@router.get("/appointments", response_model=List[schemas.Appointment])
+@router.get("/", response_model=List[schemas.Appointment])
 async def get_all_appointments(db: Session = Depends(get_db)):
     all_appointments = db.query(models.Appointment).all()
     return all_appointments
 
 
-@router.get("/appointments/{id}", response_model=schemas.Appointment)
+@router.get("/{id}", response_model=schemas.Appointment)
 async def get_appointment_by_id(id: UUID4, db: Session = Depends(get_db)):
     appt = (
         db.query(models.Appointment)
@@ -35,7 +35,7 @@ async def get_appointment_by_id(id: UUID4, db: Session = Depends(get_db)):
     return appt
 
 
-@router.get("/appointments/users/{user_id}", response_model=List[schemas.Appointment])
+@router.get("/users/{user_id}", response_model=List[schemas.Appointment])
 async def get_appointments_by_user_id(user_id: int, db: Session = Depends(get_db)):
     user_appointments = find_user_appointments(user_id, db)
     if not user_appointments:
@@ -47,9 +47,7 @@ async def get_appointments_by_user_id(user_id: int, db: Session = Depends(get_db
 
 
 @router.post(
-    "/appointments",
-    response_model=schemas.Appointment,
-    status_code=status.HTTP_201_CREATED,
+    "/", response_model=schemas.Appointment, status_code=status.HTTP_201_CREATED
 )
 async def create_appointment(
     payload: schemas.AppointmentCreate, db: Session = Depends(get_db)
@@ -64,7 +62,7 @@ async def create_appointment(
     return new_appointment
 
 
-@router.delete("/appointments/{id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_appointment(id: UUID4, db: Session = Depends(get_db)):
     appt_query = db.query(models.Appointment).filter(
         models.Appointment.appointment_id == id
@@ -82,7 +80,7 @@ async def delete_appointment(id: UUID4, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.put("/appointments/{id}", response_model=schemas.Appointment)
+@router.put("/{id}", response_model=schemas.Appointment)
 async def update_appointment(
     id: UUID4, payload: schemas.AppointmentUpdate, db: Session = Depends(get_db)
 ):
