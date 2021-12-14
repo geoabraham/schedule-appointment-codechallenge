@@ -9,7 +9,7 @@ from .. import models, schemas, schemas_validators
 from ..database import get_db
 from .user import find_user_appointments
 
-router = APIRouter(prefix="/appointments")
+router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 
 @router.get("/", response_model=List[schemas.Appointment])

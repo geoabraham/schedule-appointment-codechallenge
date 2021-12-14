@@ -9,7 +9,7 @@ from sqlalchemy.orm.session import Session
 from .. import hashing, models, schemas
 from ..database import get_db
 
-router = APIRouter(prefix="/users")
+router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.get("/", response_model=List[schemas.User])
