@@ -24,9 +24,17 @@ class Appointment(BaseAppointment):
         orm_mode = True
 
 
-class UserCreate(BaseModel):
+class BaseUser(BaseModel):
     email: EmailStr
     user_passwd: str
+
+
+class UserCreate(BaseUser):
+    pass
+
+
+class UserLogin(BaseModel):
+    pass
 
 
 class User(BaseModel):
