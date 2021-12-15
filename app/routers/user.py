@@ -35,7 +35,7 @@ async def get_appointment_by_id(id: int, db: Session = Depends(get_db)):
 async def create_user(
     payload: schemas.UserCreate,
     db: Session = Depends(get_db),
-    user_id: int = Depends(oauth2.get_current_user),
+    current_user: int = Depends(oauth2.get_current_user),
 ):
     hashed_passwd = hashing.hash_bcrypt(payload.user_passwd)
     payload.user_passwd = hashed_passwd

@@ -52,7 +52,7 @@ async def get_appointments_by_user_id(user_id: int, db: Session = Depends(get_db
 async def create_appointment(
     payload: schemas.AppointmentCreate,
     db: Session = Depends(get_db),
-    user_id: int = Depends(oauth2.get_current_user),
+    current_user=Depends(oauth2.get_current_user),
 ):
     schemas_validators.validate_appointment(payload, db)
 
@@ -68,17 +68,22 @@ async def create_appointment(
 async def delete_appointment(
     id: UUID4,
     db: Session = Depends(get_db),
-    user_id: int = Depends(oauth2.get_current_user),
+    current_user=Depends(oauth2.get_current_user),
 ):
     appt_query = db.query(models.Appointment).filter(
         models.Appointment.appointment_id == id
     )
 
-    if not appt_query.first():
+    appt = appt_query.first()
+
+    if not appt:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             f"Appointment with id: {id} does not exist",
         )
+
+    if appt.user_id != int(current_user.user_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
 
     appt_query.delete(synchronize_session=False)
     db.commit()
@@ -91,7 +96,7 @@ async def update_appointment(
     id: UUID4,
     payload: schemas.AppointmentUpdate,
     db: Session = Depends(get_db),
-    user_id: int = Depends(oauth2.get_current_user),
+    current_user=Depends(oauth2.get_current_user),
 ):
     schemas_validators.validate_appointment(payload, db)
 
@@ -99,11 +104,16 @@ async def update_appointment(
         models.Appointment.appointment_id == id
     )
 
-    if not appt_query.first():
+    appt = appt_query.first()
+
+    if not appt:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             f"Appointment with id: {id} does not exist",
         )
+
+    if appt.user_id != int(current_user.user_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
 
     appt_query.update(payload.dict(), synchronize_session=False)
     db.commit()
