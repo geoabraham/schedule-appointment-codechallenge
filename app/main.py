@@ -1,12 +1,8 @@
-from time import sleep
-
-import psycopg2
 from fastapi import FastAPI
-from psycopg2.extras import RealDictCursor
 
 from . import models
 from .database import engine
-from .routers import appointment, user, auth
+from .routers import appointment, auth, user
 
 models.Base.metadata.create_all(bind=engine)
 
