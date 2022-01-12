@@ -5,10 +5,7 @@ from .routers import appointment, auth, user
 
 app = FastAPI(title="Schedule Appointment")
 
-origins = [
-    "http://localhost",
-    "http://localhost:8080",
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
