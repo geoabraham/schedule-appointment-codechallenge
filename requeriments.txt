@@ -10,3 +10,4 @@ cryptography==36.0.0
 python-jose==3.3.0
 python-multipart==0.0.5
 python-dotenv==0.19.2
+alembic==1.7.5
